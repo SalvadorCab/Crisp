@@ -22,7 +22,6 @@ app.get('/shopify', (req, res) =>{
     const shop=req.query.shop;
     if(shop){
         const state=nonce();
-        console.log(state);
         const redirectUri=`${forwardingAddress}/shopify/callback`;
         const installUrl=`https://${shop}${shopifyUrlEnd}/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&state=${state}&redirect_uri=${redirectUri}`;
          
@@ -55,8 +54,24 @@ app.get('/shopify/callback', (req, res) =>{
             return res.status(400).send('HMAC validation failed!');
         }
 
-        res.status(200).send('HMAC validated');
-    } else {
+        const accessTokenRequestUrl = `https://${shop}/admin/oauth/access_token`;
+        const accessTokenPayload = {
+            client_id: apiKey,
+            client_secret: apiSecret,
+            code
+        };
+
+        request.post(accessTokenRequestUrl, { json: accessTokenPayload })
+        .then((accessTokenResponse) => {
+            console.log("Point reached!");
+            const accessToken = accessTokenResponse.access_token;
+            res.status(200).send("Access token received");
+        })
+        .catch(error => {
+            console.log(error);
+            res.status(418).send(error.error.message);
+            });
+    } else { 
         res.status(400).send('Required parameters missing');
     }
 });
