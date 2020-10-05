@@ -5,6 +5,7 @@ const cookie=require('cookie');
 const nonce=require('nonce')();
 const querystring=require('querystring');
 const request=require('request-promise');
+const pool = require('connection/connection');
 const socket=require('socket.io');
 
 const apiKey=process.env.SHOPIFY_API_KEY;
@@ -15,10 +16,13 @@ const shopifyUrlEnd='.myshopify.com';
 
 const app=express();
 
+// Just connection testing function.
 app.get('/', (req, res) =>{
-    res.send("Hello");
+    res.send("The routes are working!");
 });
 
+// Makes the connection to shopify in order to link this app to the store. The store can be chosen by the client
+// in the query with the name (p.e. "http://.../shopify?shop=crisp-dev1")
 app.get('/shopify', (req, res) =>{
     const shop=req.query.shop;
     if(shop){
@@ -33,7 +37,8 @@ app.get('/shopify', (req, res) =>{
     }
 });
 
-// endpoint to route the app to the store (crisp-dev1 or crisp-dev2) The store is set by the client
+// Endpoint to route the app to the store (crisp-dev1 or crisp-dev2) The store is set by the client
+// This endpoint is called by the previous endpoint (where the name of the store is received)
 app.get('/shopify/callback', (req, res) =>{
     const { shop, hmac, code, state }=req.query;
     const stateCookie=cookie.parse(req.headers.cookie).state;
@@ -88,6 +93,8 @@ app.get('/shopify/callback', (req, res) =>{
     }
 });
 
+// Posting data at the shopify site of the store
+// Note at the end 
 app.post('/app/create-product', (req, res) =>{
     console.log(`create product for ${shop}`);
     
@@ -136,6 +143,19 @@ app.post('/app/create-product', (req, res) =>{
             console.log(response.body);
             if (response.statusCode == 201) {
                 res.json(true);
+                // Part that inserts the data in the local DB
+                pool.query(
+                    `INSERT INTO a009_patients(title, body_html, sku, vendor, product_type, tags,
+                      ) VALUES ('${req.body.title}',
+                      '${req.body.body_html}',
+                      '${req.body.sku}',
+                      '${req.body.vendor}',
+                      '${req.body.product_type}',
+                      '${req.body.tags}'`,
+                    () => {
+                        res.send('Entry added.');
+                    }
+                );
             } else {
                 res.json(false);
             }
