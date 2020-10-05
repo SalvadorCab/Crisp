@@ -90,7 +90,11 @@ app.get('/shopify/callback', (req, res) =>{
 
 app.post('/app/create-product', (req, res) =>{
     console.log(`create product for ${shop}`);
-    /*
+    
+    // This is how the data of the new product should be received. For testing purposes, the same product is
+    // created instead, since the important point is to trigger the socket and see the changes, not the product 
+    // post itself.
+    /* 
     let new_product = {
         product: {
             title: req.body.title,
@@ -153,4 +157,8 @@ const io=socket(server);
 // Triggering the listener and connecting to the server
 io.on('connection', socket=>{
     console.log("Connection socket triggered");
+
+    socket.on('product_change', (data) =>{
+        io.sockets.emit('product_change', data);
+    })
 });
