@@ -5,11 +5,12 @@ const cookie=require('cookie');
 const nonce=require('nonce')();
 const querystring=require('querystring');
 const request=require('request-promise');
+const socket=require('socket.io');
 
 const apiKey=process.env.SHOPIFY_API_KEY;
 const apiSecret=process.env.SHOPIFY_API_SECRET;
 const scopes='write_products';
-const forwardingAddress='https://07b6d43dd2db.ngrok.io';
+const forwardingAddress='https://14aa3574a377.ngrok.io';
 const shopifyUrlEnd='.myshopify.com';
 
 const app=express();
@@ -63,9 +64,20 @@ app.get('/shopify/callback', (req, res) =>{
 
         request.post(accessTokenRequestUrl, { json: accessTokenPayload })
         .then((accessTokenResponse) => {
-            console.log("Point reached!");
             const accessToken = accessTokenResponse.access_token;
-            res.status(200).send("Access token received");
+            //const apiRequestUrl = `https://${shop}/admin/shop.json`;
+            const apiRequestUrl = `https://${shop}/admin/products.json`;
+            const apiRequestHeader = {
+                'X-Shopify-Access-Token': accessToken
+            }
+
+            request.get(apiRequestUrl, { headers: apiRequestHeader })
+            .then(apiResponse => {
+                res.send(JSON.parse(apiResponse));
+            })
+            .catch(error => {
+                res.status(418).send(error.error.message);
+            })
         })
         .catch(error => {
             console.log(error);
@@ -76,6 +88,69 @@ app.get('/shopify/callback', (req, res) =>{
     }
 });
 
-app.listen(3000, ()=>{
+app.post('/app/create-product', (req, res) =>{
+    console.log(`create product for ${shop}`);
+    /*
+    let new_product = {
+        product: {
+            title: req.body.title,
+            body_html: req.body.body_html,
+            vendor: req.body.vendor,
+            product_type: req.body.product_type,
+            tags: req.body.tags
+        }
+    };
+    */
+  
+    let new_product = {
+        "product": {
+            "title": "Short sleeved shirt",
+            "body_html": "<strong>Elegant Shirt</strong>",
+            "sku": "SDF-345gh-234",
+            "vendor": "Crisps",
+            "product_type": "Short sleeved shirt",
+            "tags": "Crisps"
+            }
+        }
+    
+    let url = 'https://' + req.query.shop + '.myshopify.com/admin/products.json';
+
+    let options = {
+        method: 'POST',
+        uri: url,
+        json: true,
+        resolveWithFullResponse: true,//added this to view status code
+        headers: {
+            'X-Shopify-Access-Token': process.env.SHOPIFY_API_KEY,
+            'content-type': 'application/json'
+        },
+        body: new_product  
+    }
+
+    request.post(options)
+        .then(function (response) {
+            console.log(response.body);
+            if (response.statusCode == 201) {
+                res.json(true);
+            } else {
+                res.json(false);
+            }
+
+        })
+        .catch(function (err) {
+            console.log(err);
+            res.json(false);
+        });
+});
+
+const server = app.listen(3000, ()=>{
     console.log("Successfully connected!!!");
 })
+
+// Socket waiting for changes in the server
+const io=socket(server);
+
+// Triggering the listener and connecting to the server
+io.on('connection', socket=>{
+    console.log("Connection socket triggered");
+});

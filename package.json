@@ -24,6 +24,7 @@
     "nodemon": "^2.0.4",
     "nonce": "^1.0.4",
     "request": "^2.88.2",
-    "request-promise": "^4.2.6"
+    "request-promise": "^4.2.6",
+    "socket.io": "^2.3.0"
   }
 }
